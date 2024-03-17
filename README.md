@@ -72,14 +72,14 @@ $ curl localhost:5000/stats
 A few more parameters can be passed to this endpoint:
 
 * Filters repositories based on the languages. Example: `Go`
-Filtering is done on the languages returned by GET language
+Uses GET languages
 ```
 $ curl localhost:5000/stats?language=Go
 
 ```
 
 * Filters the repositories based on the license. Example: `mit`
-Filtering is done on the `lincense.key` field from GET repository
+Uses GET repository: `lincense.key`
 ```
 $ curl localhost:5000/stats?license=mit
 
