@@ -1,8 +1,8 @@
-package main
+package github
 
 import "time"
 
-type GithubEvent struct {
+type Event struct {
 	Id    string `json:"id"`
 	Type  string `json:"type"`
 	Actor struct {
@@ -23,7 +23,7 @@ type GithubEvent struct {
 	} `json:"payload"`
 }
 
-type GithubRepository struct {
+type Repository struct {
 	Id       uint   `json:"id"`
 	Name     string `json:"name"`
 	FullName string `json:"full_name"`

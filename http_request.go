@@ -24,10 +24,10 @@ type HttpRequest struct {
 // Then based on the returned status code
 // 200: unmarshal the response.Body into the `body` argument
 // any: read and returns the response.Body as an error
-func (request *HttpRequest) Do(ctx context.Context, body any) error {
+func (request *HttpRequest) Do(ctx context.Context, body any) (*http.Response, error) {
 	req, err := http.NewRequest(request.Method, request.Url, nil)
 	if err != nil {
-		return fmt.Errorf("http.NewRequest failed: %w", err)
+		return nil, fmt.Errorf("http.NewRequest failed: %w", err)
 	}
 
 	for key, value := range request.Headers {
@@ -46,7 +46,7 @@ func (request *HttpRequest) Do(ctx context.Context, body any) error {
 
 	res, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return fmt.Errorf("http.DefaultClient.Do failed: %w", err)
+		return res, fmt.Errorf("http.DefaultClient.Do failed: %w", err)
 	}
 
 	switch res.StatusCode {
@@ -54,13 +54,13 @@ func (request *HttpRequest) Do(ctx context.Context, body any) error {
 		if err := json.NewDecoder(res.Body).Decode(body); err != nil {
 			_, _ = io.ReadAll(res.Body)
 
-			return fmt.Errorf("json.NewDecoder failed: %w", err)
+			return res, fmt.Errorf("json.NewDecoder failed: %w", err)
 		}
 	default:
 		bytes, _ := io.ReadAll(res.Body)
 
-		return fmt.Errorf("request %s %s?%s failed: %s.", request.Method, request.Url, req.URL.RawQuery, string(bytes))
+		return res, fmt.Errorf("request %s %s?%s failed: %s.", request.Method, request.Url, req.URL.RawQuery, string(bytes))
 	}
 
-	return nil
+	return res, nil
 }
