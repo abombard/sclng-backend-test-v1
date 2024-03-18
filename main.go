@@ -25,18 +25,12 @@ func main() {
 	}
 
 	// start workers
-	ctx := context.Background()
-
 	// TODO handle SIGINT so we finish the requests being processed
-	initStatsWorkers(ctx, 16)
+	initStatsWorkers(context.Background(), 16)
 
 	log.Info("Initializing routes")
 	router := handlers.NewRouter(log)
 	router.HandleFunc("/ping", pongHandler)
-	// Initialize web server and configure the following routes:
-	// GET /repos
-	// GET /stats
-
 	router.HandleFunc("/repos", reposHandlerGet).Methods(http.MethodGet)
 	router.HandleFunc("/stats", statsHandlerGet).Methods(http.MethodGet)
 
@@ -64,8 +58,7 @@ func pongHandler(w http.ResponseWriter, r *http.Request, _ map[string]string) er
 func reposHandlerGet(w http.ResponseWriter, r *http.Request, _ map[string]string) error {
 	log := logger.Get(r.Context())
 
-	ctx := r.Context()
-	ctx = context.WithValue(ctx, Authorization{}, Authorization{Token: r.Header.Get("Authorization")})
+	ctx := context.WithValue(r.Context(), Authorization{}, Authorization{Token: r.Header.Get("Authorization")})
 
 	repos, err := fetchRepositories(ctx, r.URL.Query())
 	if err != nil {

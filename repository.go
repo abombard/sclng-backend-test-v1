@@ -12,6 +12,8 @@ import (
 )
 
 func fetchGithubRepositories(ctx context.Context, params url.Values) ([]github.Repository, error) {
+	log := logger.Get(ctx)
+
 	httpRequest := HttpRequest{
 		Method: http.MethodGet,
 		Url:    "https://api.github.com/repositories",
@@ -76,7 +78,7 @@ func fetchGithubRepositories(ctx context.Context, params url.Values) ([]github.R
 			break
 		}
 
-		logger.Get(ctx).Debugf("tryCount %d sinceIdPrev %d sinceId %d", tryCount, sinceIdPrev, sinceId)
+		log.Debugf("tryCount %d sinceIdPrev %d sinceId %d len(results) %d", tryCount, sinceIdPrev, sinceId, len(repositories))
 	}
 
 	// at this point we just have to find that one more repository missing
@@ -91,7 +93,7 @@ func fetchGithubRepositories(ctx context.Context, params url.Values) ([]github.R
 		}
 	}
 
-	logger.Get(ctx).Debugf("took %d calls to find the last 100 repositories", tryCount)
+	log.Infof("took %d calls to find the last 100 repositories", tryCount)
 
 	return repositories, nil
 }

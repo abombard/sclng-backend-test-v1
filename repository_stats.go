@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -43,6 +44,12 @@ type WorkerStatsTask struct {
 // limit to 1000 just to set a limit but the actual limit would require some thinking
 var workerStatsTasks = make(chan WorkerStatsTask, 1000)
 
+type WorkerDiscardRepository struct{}
+
+func (w WorkerDiscardRepository) Error() string {
+	return "discard repository"
+}
+
 func startWorkerStats(ctx context.Context) {
 	for task := range workerStatsTasks {
 		httpRequest := HttpRequest{
@@ -81,13 +88,15 @@ func startWorkerStats(ctx context.Context) {
 			task.stats <- WorkerStats{
 				Err: fmt.Errorf("failed to fetch languages: %w", err),
 			}
+
+			continue
 		}
 
 		// filters out repositories based on the query parameters
 		license := task.params.Get("license")
 		if license != "" && repository.License.Key != license {
 			task.stats <- WorkerStats{
-				Err: fmt.Errorf("discard repository: wrong license `%s`", repository.License.Key),
+				Err: fmt.Errorf("wrong license `%s`: %w", repository.License.Key, WorkerDiscardRepository{}),
 			}
 
 			continue
@@ -97,8 +106,10 @@ func startWorkerStats(ctx context.Context) {
 		if language != "" {
 			if _, ok := languages[language]; !ok {
 				task.stats <- WorkerStats{
-					Err: fmt.Errorf("discard repository: wrong language `%v`", languages),
+					Err: fmt.Errorf("wrong language `%v`: %w", languages, WorkerDiscardRepository{}),
 				}
+
+				continue
 			}
 		}
 
@@ -127,6 +138,8 @@ type Stats struct {
 }
 
 func fetchStats(ctx context.Context, params url.Values) ([]Stats, error) {
+	log := logger.Get(ctx)
+
 	stats := make(chan WorkerStats)
 	defer close(stats)
 
@@ -140,6 +153,7 @@ func fetchStats(ctx context.Context, params url.Values) ([]Stats, error) {
 	for _, repository := range repositories {
 		workerStatsTasks <- WorkerStatsTask{
 			auth:       auth,
+			params:     params,
 			repository: repository,
 			stats:      stats,
 		}
@@ -155,7 +169,11 @@ func fetchStats(ctx context.Context, params url.Values) ([]Stats, error) {
 			eventCount -= 1
 
 			if stat.Err != nil {
-				logger.Get(ctx).Warnf("error fetching stats: %w", stat.Err)
+				if errors.Is(stat.Err, WorkerDiscardRepository{}) {
+					log.Debug(stat.Err.Error())
+				} else {
+					log.Warnf("error fetching stats: %w", stat.Err)
+				}
 				break
 			}
 
